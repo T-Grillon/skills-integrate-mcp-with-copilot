@@ -3,6 +3,19 @@ document.addEventListener("DOMContentLoaded", () => {
   const activitySelect = document.getElementById("activity");
   const signupForm = document.getElementById("signup-form");
   const messageDiv = document.getElementById("message");
+  const loginToggle = document.getElementById("login-toggle");
+  const loginContainer = document.getElementById("login-container");
+  const loginForm = document.getElementById("login-form");
+  const loginMessageDiv = document.getElementById("login-message");
+  const signupContainer = document.getElementById("signup-container");
+  let adminToken = localStorage.getItem("adminToken");
+
+  function updateAdminControls() {
+    const loggedIn = Boolean(adminToken);
+    signupContainer.classList.toggle("hidden", !loggedIn);
+    loginContainer.classList.toggle("hidden", loggedIn);
+    loginToggle.textContent = loggedIn ? "Log out" : "Teacher login";
+  }
 
   // Function to fetch activities from API
   async function fetchActivities() {
@@ -30,7 +43,11 @@ document.addEventListener("DOMContentLoaded", () => {
                 ${details.participants
                   .map(
                     (email) =>
-                      `<li><span class="participant-email">${email}</span><button class="delete-btn" data-activity="${name}" data-email="${email}">❌</button></li>`
+                      `<li><span class="participant-email">${email}</span>${
+                        adminToken
+                          ? `<button class="delete-btn" data-activity="${name}" data-email="${email}">Remove</button>`
+                          : ""
+                      }</li>`
                   )
                   .join("")}
               </ul>
@@ -80,6 +97,7 @@ document.addEventListener("DOMContentLoaded", () => {
         )}/unregister?email=${encodeURIComponent(email)}`,
         {
           method: "DELETE",
+          headers: { Authorization: `Bearer ${adminToken}` },
         }
       );
 
@@ -124,6 +142,7 @@ document.addEventListener("DOMContentLoaded", () => {
         )}/signup?email=${encodeURIComponent(email)}`,
         {
           method: "POST",
+          headers: { Authorization: `Bearer ${adminToken}` },
         }
       );
 
@@ -155,6 +174,50 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   });
 
+  loginToggle.addEventListener("click", async () => {
+    if (adminToken) {
+      await fetch("/auth/logout", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${adminToken}` },
+      });
+      localStorage.removeItem("adminToken");
+      adminToken = null;
+      updateAdminControls();
+      fetchActivities();
+      return;
+    }
+
+    loginContainer.classList.toggle("hidden");
+  });
+
+  loginForm.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const response = await fetch("/auth/login", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        username: document.getElementById("username").value,
+        password: document.getElementById("password").value,
+      }),
+    });
+    const result = await response.json();
+
+    if (!response.ok) {
+      loginMessageDiv.textContent = result.detail || "Unable to log in";
+      loginMessageDiv.className = "error";
+      loginMessageDiv.classList.remove("hidden");
+      return;
+    }
+
+    adminToken = result.token;
+    localStorage.setItem("adminToken", adminToken);
+    loginForm.reset();
+    loginMessageDiv.className = "hidden";
+    updateAdminControls();
+    fetchActivities();
+  });
+
   // Initialize app
+  updateAdminControls();
   fetchActivities();
 });

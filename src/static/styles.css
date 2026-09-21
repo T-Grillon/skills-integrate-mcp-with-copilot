@@ -16,12 +16,21 @@ body {
 }
 
 header {
+  position: relative;
   text-align: center;
   padding: 20px 0;
   margin-bottom: 30px;
   background-color: #1a237e;
   color: white;
   border-radius: 5px;
+}
+
+#login-toggle {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  background-color: white;
+  color: #1a237e;
 }
 
 header h1 {
